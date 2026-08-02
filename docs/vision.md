@@ -1,31 +1,34 @@
 # Vision
 
-## Working Title
-
-(Codename for now)
+> **Eliminate orchestration friction so people can use the best AI for every task without ever rebuilding context.**
 
 ---
 
 # The Problem
 
-Today's AI systems are incredibly capable, yet working across them is surprisingly primitive.
+Modern AI systems are remarkably capable.
 
-People who use ChatGPT, Claude, Gemini, Cursor, Windsurf and other AI tools become the orchestration layer themselves.
+The workflow around them is not.
+
+People who regularly use ChatGPT, Claude, Gemini, Cursor, Windsurf, and other AI tools quickly discover that they become the orchestration layer themselves.
+
+Every model excels at something different.
+
+So instead of staying with one assistant, users naturally move between them.
+
+Each switch introduces friction.
 
 They manually:
 
-- remember previous conversations
-- summarize context
-- decide which model to use
-- rewrite prompts
-- copy conversations between tools
-- explain why earlier decisions were made
+* remember previous conversations
+* reconstruct project context
+* explain why earlier decisions were made
+* rewrite prompts
+* transfer files
+* repeat rejected ideas
+* decide what the next AI actually needs to know
 
-Every conversation becomes an isolated island.
-
-The user continuously reconstructs project state from memory.
-
-As projects become larger, the cost of context switching becomes greater than the cost of asking the AI.
+As projects become larger, the cost of maintaining context becomes greater than the cost of solving the problem itself.
 
 The bottleneck is no longer intelligence.
 
@@ -39,59 +42,137 @@ Current AI products treat conversations as the primary object.
 
 We believe this is the wrong abstraction.
 
-A conversation is only one temporary interaction with a project.
+A conversation is only one interaction with a project.
 
-Projects outlive conversations.
+Projects continue long after conversations end.
 
-Knowledge outlives prompts.
+Knowledge continues long after prompts disappear.
 
-Reasoning outlives chats.
+Reasoning continues long after individual chats are closed.
 
-The project—not the conversation—should become the persistent unit.
+Users are not trying to continue conversations.
+
+They are trying to continue work.
 
 ---
 
 # Our Thesis
 
-AI chats should be stateless.
+The project—not the conversation—should become the persistent unit.
 
-Projects should not.
+AI conversations should be temporary execution surfaces.
 
-Instead of every conversation independently accumulating context, there should exist a persistent cognitive layer that continuously understands the project regardless of which AI is currently being used.
+Project understanding should persist independently of whichever model happens to be involved.
 
-The user should never have to manually rebuild context.
+Instead of every conversation accumulating isolated context, there should exist a persistent cognitive layer that continuously understands the project and carries that understanding across every interaction.
+
+The user should never have to manually reconstruct context.
 
 ---
 
 # What We Are Building
 
-A cognitive operating layer that lives above existing AI systems.
+We are building a cognitive operating layer that sits above existing AI systems.
 
-Rather than replacing ChatGPT, Claude or Cursor, it coordinates them.
+It does not replace ChatGPT.
 
-It continuously maintains an evolving understanding of:
+It does not replace Claude.
 
-- goals
-- decisions
-- constraints
-- open questions
-- tasks
-- reasoning
-- project evolution
+It does not replace Cursor.
 
-When switching between AI systems, it transfers understanding instead of conversation history.
+Instead, it coordinates them.
+
+The system continuously maintains an evolving understanding of a project by preserving things such as:
+
+* goals
+* current objectives
+* important decisions
+* reasoning behind decisions
+* rejected approaches
+* constraints
+* assumptions
+* open questions
+* tasks
+* relationships
+* project evolution
+
+When switching between AI systems, the layer transfers understanding instead of conversation history.
+
+Every AI receives exactly the context required for the work it is about to perform.
 
 ---
 
-# Core Principle
+# Our Core Insight
 
-We do not store chats.
+People should not be responsible for orchestrating AI.
 
-We maintain project state.
+Today, the human acts as the message bus between intelligent systems.
 
-Chats become disposable.
+Remember.
 
-Knowledge persists.
+Summarize.
+
+Copy.
+
+Paste.
+
+Repeat.
+
+This is wasted cognition.
+
+The cognitive layer exists so humans spend their mental energy solving problems—not managing context.
+
+---
+
+# The Mental Shift
+
+Today's workflow looks like this:
+
+```
+ChatGPT
+
+↓
+
+Claude
+
+↓
+
+Cursor
+
+↓
+
+Gemini
+
+↓
+
+Back to ChatGPT
+```
+
+Our workflow looks like this:
+
+```
+Project
+
+↓
+
+Persistent Understanding
+
+↓
+
+Context Projection
+
+↓
+
+Any AI
+
+↓
+
+Project Understanding Evolves
+```
+
+AI models become interchangeable execution engines.
+
+The project becomes the source of continuity.
 
 ---
 
@@ -99,55 +180,77 @@ Knowledge persists.
 
 This is not:
 
-- another chatbot
-- another AI wrapper
-- another memory feature
-- another note-taking application
-- another prompt library
+* another chatbot
+* another AI wrapper
+* another memory feature
+* another note-taking application
+* another prompt manager
+* another knowledge base
 
-Instead, it is a persistent cognitive layer.
+Those products organize conversations.
 
-The project itself becomes the source of truth.
+We organize understanding.
+
+They preserve history.
+
+We preserve continuity.
 
 ---
 
 # Long-Term Vision
 
-Today people think in terms of:
+Using multiple AI systems should feel like using multiple applications on the same operating system.
 
-"I was talking to Claude."
+Switching between models should be as effortless as switching between browser tabs.
 
-Tomorrow they should think:
+The user should never think:
 
-"I'm building Project X."
+> "What do I need to tell Claude?"
 
-The AI used becomes an implementation detail.
+Instead, they should simply continue working.
 
-The project becomes continuous.
+The cognitive layer quietly maintains continuity while selecting, preparing, and coordinating the right AI for the task.
 
-The intelligence becomes persistent.
+Eventually, conversations become disposable.
+
+Project understanding remains.
 
 ---
 
 # Success
 
-A successful system makes AI conversations feel interchangeable.
+A successful system makes AI context invisible.
 
-Users should be able to switch between any model without thinking about context transfer.
+Users stop thinking about prompts.
 
-The cognitive layer quietly maintains continuity while the underlying AI ecosystem continues to evolve.
+They stop thinking about context transfer.
 
-The operating system for AI work is not another model.
+They stop thinking about which conversation contained the answer.
 
-It is the layer that understands the work itself.
+Instead, they focus entirely on the work.
 
-# Design Principles
+The project always knows where it is.
 
-1. Projects over conversations.
-2. Knowledge over transcripts.
-3. Reasons over summaries.
-4. Human remains in control.
-5. AI models are replaceable.
-6. Local-first where possible.
-7. Structured state over free-form memory.
-8. Minimize orchestration friction.
+Every AI always starts with the understanding it needs.
+
+Momentum is never lost.
+
+---
+
+# Foundational Belief
+
+The future of AI is not a better chatbot.
+
+It is a world where intelligence is abundant, specialized, and constantly evolving.
+
+The scarce resource is no longer intelligence.
+
+It is continuity.
+
+We believe the next generation of AI software will not be defined by larger models.
+
+It will be defined by systems that preserve understanding as people move seamlessly between them.
+
+Our goal is simple:
+
+**Make AI feel like one continuous workspace instead of a collection of disconnected conversations.**
