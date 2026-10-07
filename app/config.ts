@@ -28,8 +28,8 @@ export function getConfig(): CortexConfig {
       defaultWidth: 320,
       defaultHeight: 60,
       collapsedHeight: 60,
-      expandedWidth: 380,
-      expandedHeight: 280,
+      expandedWidth: 480,
+      expandedHeight: 640,
       marginFromEdge: 20,
     },
     shortcuts: {

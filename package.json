@@ -3,20 +3,23 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "main": "./out/main/index.js",
+  "main": "./out/main/index.cjs",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
-    "preview": "electron-vite preview"
+    "preview": "electron-vite preview",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
+    "@types/better-sqlite3": "^7.6.11",
     "@vitejs/plugin-react": "^4.3.1",
     "electron": "^31.2.0",
     "electron-vite": "^2.3.0",
     "typescript": "^5.5.3",
-    "vite": "^5.3.4"
+    "vite": "^5.3.4",
+    "vitest": "^2.0.5"
   },
   "dependencies": {
     "better-sqlite3": "^11.1.2",

@@ -53,9 +53,9 @@ export function createOverlayWindow(): BrowserWindow {
 }
 
 function getPreloadPath(): string {
-  // In both dev and production, the preload is at out/preload/index.js
+  // In both dev and production, the preload is at out/preload/index.cjs
   // __dirname is out/main/ when running from compiled output
-  return join(__dirname, '../preload/index.js');
+  return join(__dirname, '../preload/index.cjs');
 }
 
 function loadRenderer(window: BrowserWindow): void {

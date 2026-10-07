@@ -29,6 +29,9 @@ export default defineConfig({
     root: resolve('app/renderer'),
     plugins: [react()],
     build: {
+      rollupOptions: {
+        input: resolve('app/renderer/index.html'),
+      },
       sourcemap: true,
     },
   },

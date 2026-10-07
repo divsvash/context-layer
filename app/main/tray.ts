@@ -1,4 +1,4 @@
-import { BrowserWindow, Tray, Menu, nativeImage, app } from 'electron';
+import { BrowserWindow, Tray, Menu, nativeImage, app, type NativeImage } from 'electron';
 import { getAppState } from './app';
 import { focusMainWindow } from './windows';
 
@@ -70,7 +70,7 @@ export function destroyTray(): void {
   }
 }
 
-function createMinimalIcon(): nativeImage {
+function createMinimalIcon(): NativeImage {
   const size = 16;
   const buffer = Buffer.alloc(size * size * 4);
   for (let y = 0; y < size; y++) {
