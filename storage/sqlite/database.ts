@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import Database from 'better-sqlite3';
 import type { UnderstandingCandidate } from '../../ai/extraction/extractor';
 import type { Interaction } from '../../interaction/normalize';
-import type { CortexState, Project, ProjectEntryInput, ProjectState } from '../../project/types';
+import type { CortexState, Project, ProjectEntryInput, ProjectEvidenceSummary, ProjectState } from '../../project/types';
 import type { UnderstandingEntry, UnderstandingKind } from '../../understanding/entry';
 import type { RawObservation } from '../../observer/clipboard';
 
@@ -22,14 +22,19 @@ export class SqliteStore {
     this.migrateLegacySchema();
     this.ensureProject();
     this.backfillProjectOwnership();
-    this.db.pragma('user_version = 2');
+    this.db.pragma('user_version = 3');
   }
 
   private createSchema(): void {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, name TEXT NOT NULL, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS observations (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, source TEXT NOT NULL, content TEXT NOT NULL, observed_at INTEGER NOT NULL, metadata_json TEXT);
-      CREATE TABLE IF NOT EXISTS interactions (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, observation_id TEXT NOT NULL UNIQUE, source TEXT NOT NULL, content TEXT NOT NULL, occurred_at INTEGER NOT NULL, metadata_json TEXT, FOREIGN KEY (observation_id) REFERENCES observations(id));
+      CREATE TABLE IF NOT EXISTS interactions (
+        id TEXT PRIMARY KEY, project_id TEXT NOT NULL, observation_id TEXT NOT NULL UNIQUE,
+        source TEXT NOT NULL, content TEXT NOT NULL, occurred_at INTEGER NOT NULL, metadata_json TEXT,
+        extraction_status TEXT NOT NULL DEFAULT 'pending', extraction_error TEXT, extracted_at INTEGER,
+        FOREIGN KEY (observation_id) REFERENCES observations(id)
+      );
       CREATE TABLE IF NOT EXISTS understanding_entries (
         id TEXT PRIMARY KEY, project_id TEXT NOT NULL, interaction_id TEXT,
         kind TEXT NOT NULL CHECK (kind IN ('goal','decision','constraint','question','technology','note')),
@@ -45,6 +50,9 @@ export class SqliteStore {
   private migrateLegacySchema(): void {
     this.addColumnIfMissing('observations', 'project_id', 'TEXT');
     this.addColumnIfMissing('interactions', 'project_id', 'TEXT');
+    this.addColumnIfMissing('interactions', 'extraction_status', "TEXT NOT NULL DEFAULT 'pending'");
+    this.addColumnIfMissing('interactions', 'extraction_error', 'TEXT');
+    this.addColumnIfMissing('interactions', 'extracted_at', 'INTEGER');
     this.addColumnIfMissing('understanding_entries', 'reason', 'TEXT');
     this.addColumnIfMissing('understanding_entries', 'provenance', "TEXT NOT NULL DEFAULT 'observed'");
     this.addColumnIfMissing('understanding_entries', 'status', "TEXT NOT NULL DEFAULT 'active'");
@@ -219,6 +227,41 @@ export class SqliteStore {
   getCortexState(): CortexState {
     const activeProject = this.getActiveProject();
     return { projects: this.listProjects(), activeProject, entries: this.getState(activeProject.id).entries };
+  }
+
+  getEvidenceSummary(projectId = this.getActiveProject().id): ProjectEvidenceSummary {
+    const row = this.db.prepare(`
+      SELECT
+        count(*) as total,
+        sum(CASE WHEN extraction_status IN ('pending', 'unavailable') THEN 1 ELSE 0 END) as pending,
+        sum(CASE WHEN extraction_status = 'processed' THEN 1 ELSE 0 END) as processed,
+        sum(CASE WHEN extraction_status = 'empty' THEN 1 ELSE 0 END) as empty,
+        sum(CASE WHEN extraction_status = 'failed' THEN 1 ELSE 0 END) as failed,
+        max(occurred_at) as lastCapturedAt
+      FROM interactions WHERE project_id = ?
+    `).get(projectId) as Record<string, number | null>;
+    return {
+      total: row.total ?? 0,
+      pending: row.pending ?? 0,
+      processed: row.processed ?? 0,
+      empty: row.empty ?? 0,
+      failed: row.failed ?? 0,
+      lastCapturedAt: row.lastCapturedAt ?? null,
+    };
+  }
+
+  getProcessableInteractions(projectId: string, limit = 20): Interaction[] {
+    return this.db.prepare(`
+      SELECT id, observation_id as observationId, source, content, occurred_at as occurredAt
+      FROM interactions
+      WHERE project_id = ? AND extraction_status IN ('pending', 'unavailable', 'failed')
+      ORDER BY occurred_at ASC LIMIT ?
+    `).all(projectId, limit) as Interaction[];
+  }
+
+  markInteractionExtraction(interactionId: string, status: 'processed' | 'empty' | 'failed' | 'unavailable', error: string | null = null): void {
+    this.db.prepare('UPDATE interactions SET extraction_status = ?, extraction_error = ?, extracted_at = ? WHERE id = ?')
+      .run(status, error, status === 'unavailable' ? null : Date.now(), interactionId);
   }
 
   getSetting(key: string): string | null {

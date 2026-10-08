@@ -48,6 +48,21 @@ describe('MVP SQLite project state', () => {
     expect(store.listProjects()).toHaveLength(1);
     store.close();
   });
+
+  it('tracks captured evidence processing state for recovery and visibility', () => {
+    const store = new SqliteStore(':memory:');
+    const project = store.getActiveProject();
+    store.recordInteraction(
+      { id: 'o1', source: 'clipboard', content: 'Useful evidence', observedAt: 10 },
+      { id: 'i1', observationId: 'o1', source: 'clipboard', content: 'Useful evidence', occurredAt: 10 },
+      project.id,
+    );
+    expect(store.getEvidenceSummary()).toMatchObject({ total: 1, pending: 1, processed: 0, failed: 0 });
+    expect(store.getProcessableInteractions(project.id)).toHaveLength(1);
+    store.markInteractionExtraction('i1', 'processed');
+    expect(store.getEvidenceSummary()).toMatchObject({ total: 1, pending: 0, processed: 1 });
+    store.close();
+  });
 });
 
 function withDatabase(run: (filename: string) => void): void {

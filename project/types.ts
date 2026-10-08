@@ -23,3 +23,12 @@ export interface CortexState {
   activeProject: Project;
   entries: UnderstandingEntry[];
 }
+
+export interface ProjectEvidenceSummary {
+  total: number;
+  pending: number;
+  processed: number;
+  empty: number;
+  failed: number;
+  lastCapturedAt: number | null;
+}

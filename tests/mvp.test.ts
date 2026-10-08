@@ -129,6 +129,19 @@ describe('Cortex coordination', () => {
     expect(persistence.applied).toHaveLength(1);
     error.mockRestore();
   });
+
+  it('reprocesses previously captured evidence without recapturing the clipboard', async () => {
+    const persistence = createPersistence();
+    persistence.interactions.push({ id: 'pending', observationId: 'old-observation', source: 'clipboard', content: 'We must work offline', occurredAt: 1 });
+    const extractor: UnderstandingExtractor = {
+      isAvailable: () => true,
+      extract: async () => [{ kind: 'constraint', content: 'Work completely offline', reason: null, supersedesEntryId: null }],
+    };
+    const commands = new CortexCommands(persistence.store, extractor, credentials(true), () => '', () => undefined);
+    await expect(commands.processPendingEvidence()).resolves.toBe(1);
+    expect(persistence.applied).toEqual(['p1']);
+    expect(persistence.extractionStatuses.get('pending')).toBe('processed');
+  });
 });
 
 function credentials(configured: boolean) {
@@ -138,7 +151,13 @@ function credentials(configured: boolean) {
 function createPersistence() {
   const projects = [project, { id: 'p2', name: 'Project B', createdAt: 2, updatedAt: 2 }];
   const states = new Map(projects.map((item) => [item.id, { project: item, entries: [] as UnderstandingEntry[] }]));
-  const result = { active: 'p1', recordedProjects: [] as string[], applied: [] as string[] };
+  const result = {
+    active: 'p1',
+    recordedProjects: [] as string[],
+    applied: [] as string[],
+    interactions: [] as Interaction[],
+    extractionStatuses: new Map<string, string>(),
+  };
   const store: CortexPersistence = {
     getCortexState: () => ({ projects, activeProject: projects.find((item) => item.id === result.active)!, entries: states.get(result.active)!.entries }),
     getActiveProject: () => projects.find((item) => item.id === result.active)!,
@@ -146,8 +165,18 @@ function createPersistence() {
     createProject: vi.fn(),
     setActiveProject: (projectId) => { result.active = projectId; return projects.find((item) => item.id === projectId)!; },
     renameProject: vi.fn(), deleteProject: vi.fn(), close: vi.fn(),
-    recordInteraction: (_observation: RawObservation, _interaction: Interaction, projectId: string) => { result.recordedProjects.push(projectId); },
+    recordInteraction: (_observation: RawObservation, interaction: Interaction, projectId: string) => { result.recordedProjects.push(projectId); result.interactions.push(interaction); },
     addManualEntry: vi.fn(), replaceEntry: vi.fn(), deleteEntry: vi.fn(),
+    getEvidenceSummary: () => ({
+      total: result.interactions.length,
+      pending: result.interactions.filter((item) => !result.extractionStatuses.has(item.id)).length,
+      processed: [...result.extractionStatuses.values()].filter((value) => value === 'processed').length,
+      empty: [...result.extractionStatuses.values()].filter((value) => value === 'empty').length,
+      failed: [...result.extractionStatuses.values()].filter((value) => value === 'failed').length,
+      lastCapturedAt: result.interactions.at(-1)?.occurredAt ?? null,
+    }),
+    getProcessableInteractions: () => result.interactions.filter((item) => !result.extractionStatuses.has(item.id) || result.extractionStatuses.get(item.id) === 'failed'),
+    markInteractionExtraction: (interactionId, status) => { result.extractionStatuses.set(interactionId, status); },
     applyExtractedEntries: (projectId, _interactionId, candidates) => {
       result.applied.push(projectId);
       return candidates.map((candidate, index) => entry({ id: `new-${index}`, projectId, kind: candidate.kind, content: candidate.content, reason: candidate.reason }));

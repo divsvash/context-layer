@@ -19,6 +19,7 @@ const cortexAPI = {
   setObserving: (observing: boolean) => ipcRenderer.invoke(IPC_CHANNELS.SET_OBSERVING, observing),
   setApiKey: (apiKey: string) => ipcRenderer.invoke(IPC_CHANNELS.SET_API_KEY, apiKey),
   clearApiKey: () => ipcRenderer.invoke(IPC_CHANNELS.CLEAR_API_KEY),
+  processPendingEvidence: () => ipcRenderer.invoke(IPC_CHANNELS.PROCESS_PENDING_EVIDENCE),
 };
 
 contextBridge.exposeInMainWorld('cortex', cortexAPI);

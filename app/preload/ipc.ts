@@ -16,6 +16,7 @@ export const IPC_CHANNELS = {
   SET_OBSERVING: 'cortex:set-observing',
   SET_API_KEY: 'cortex:set-api-key',
   CLEAR_API_KEY: 'cortex:clear-api-key',
+  PROCESS_PENDING_EVIDENCE: 'cortex:process-pending-evidence',
 } as const;
 
 export type IpcChannel = typeof IPC_CHANNELS[keyof typeof IPC_CHANNELS];

@@ -25,6 +25,8 @@ interface RuntimeState {
   observing: boolean;
   activity: string;
   aiConfigured: boolean;
+  evidence: { total: number; pending: number; processed: number; empty: number; failed: number; lastCapturedAt: number | null };
+  lastError: string | null;
 }
 
 declare global {
@@ -47,6 +49,7 @@ declare global {
       setObserving: (observing: boolean) => Promise<void>;
       setApiKey: (apiKey: string) => Promise<void>;
       clearApiKey: () => Promise<void>;
+      processPendingEvidence: () => Promise<number>;
     };
   }
 }
@@ -63,6 +66,7 @@ export function App(): React.ReactElement {
   const [manualText, setManualText] = useState('');
   const [projectDraft, setProjectDraft] = useState('');
   const [apiKey, setApiKey] = useState('');
+  const [contextPreview, setContextPreview] = useState('');
 
   const refresh = useCallback(async () => {
     try {
@@ -78,6 +82,10 @@ export function App(): React.ReactElement {
     const timer = window.setInterval(() => void refresh(), 1000);
     return () => window.clearInterval(timer);
   }, [refresh]);
+
+  useEffect(() => {
+    setContextPreview('');
+  }, [state?.activeProject.id]);
 
   const run = async (operation: () => Promise<unknown>, success: string) => {
     try {
@@ -98,6 +106,29 @@ export function App(): React.ReactElement {
 
   const activeEntries = useMemo(() => state?.entries.filter((entry) => entry.status === 'active') ?? [], [state]);
   const historicalEntries = useMemo(() => state?.entries.filter((entry) => entry.status === 'superseded') ?? [], [state]);
+
+  const generateContext = async () => {
+    try {
+      const context = await window.cortex.generateContext();
+      setContextPreview(context);
+      setNotice('Context copied');
+      setError('');
+      await refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Context generation failed');
+    }
+  };
+
+  const processCaptured = async () => {
+    try {
+      const updated = await window.cortex.processPendingEvidence();
+      setNotice(updated > 0 ? `${updated} facts added` : 'No new facts found');
+      setError('');
+      await refresh();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Captured evidence processing failed');
+    }
+  };
 
   if (!expanded) {
     return (
@@ -132,11 +163,23 @@ export function App(): React.ReactElement {
           </section>
 
           <section className={styles.primaryActions}>
-            <button className={styles.primaryButton} onClick={() => void run(() => window.cortex.generateContext(), 'Context copied')}>Generate Context</button>
+            <button className={styles.primaryButton} onClick={() => void generateContext()}>Generate Context</button>
             <span>{notice}</span>
           </section>
 
           {error && <div className={styles.error}>{error}</div>}
+          {state?.lastError && <div className={styles.error}>Extraction: {state.lastError}</div>}
+
+          <section className={styles.evidence}>
+            <div><strong>{state?.evidence.total ?? 0}</strong><span>Captured here</span></div>
+            <div><strong>{activeEntries.length}</strong><span>Current facts</span></div>
+            <div><strong>{state?.evidence.pending ?? 0}</strong><span>Pending</span></div>
+            <div><strong>{state?.evidence.failed ?? 0}</strong><span>Failed</span></div>
+            <button
+              disabled={!state?.aiConfigured || ((state?.evidence.pending ?? 0) + (state?.evidence.failed ?? 0) === 0)}
+              onClick={() => void processCaptured()}
+            >Process captured</button>
+          </section>
 
           <details className={styles.disclosure}>
             <summary>Projects</summary>
@@ -162,7 +205,7 @@ export function App(): React.ReactElement {
           </details>
 
           <section className={styles.knowledge}>
-            <h2>Project understanding <span>{activeEntries.length}</span></h2>
+            <h2>Current project facts <span>{activeEntries.length}</span></h2>
             {activeEntries.length === 0 && <p className={styles.empty}>No current knowledge yet. Add it manually or configure extraction, then copy useful project text.</p>}
             {kinds.map((kind) => {
               const entries = activeEntries.filter((entry) => entry.kind === kind);
@@ -180,6 +223,13 @@ export function App(): React.ReactElement {
             <details className={styles.disclosure}>
               <summary>Superseded history ({historicalEntries.length})</summary>
               {historicalEntries.map((entry) => <p className={styles.history} key={entry.id}><strong>{entry.kind}</strong> · {entry.content}</p>)}
+            </details>
+          )}
+
+          {contextPreview && (
+            <details className={styles.disclosure} open>
+              <summary>Generated context preview</summary>
+              <pre className={styles.contextPreview}>{contextPreview}</pre>
             </details>
           )}
 

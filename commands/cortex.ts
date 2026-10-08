@@ -2,17 +2,19 @@ import type { UnderstandingCandidate, UnderstandingExtractor } from '../ai/extra
 import { compileProjectContext } from '../context/compiler/compile';
 import { normalizeObservation } from '../interaction/normalize';
 import { ClipboardObserver, type RawObservation } from '../observer/clipboard';
-import type { CortexState, Project, ProjectEntryInput, ProjectState } from '../project/types';
+import type { CortexState, Project, ProjectEntryInput, ProjectEvidenceSummary, ProjectState } from '../project/types';
 import type { CredentialStore } from '../storage/credentials';
 import type { SqliteStore } from '../storage/sqlite/database';
 import type { UnderstandingEntry, UnderstandingKind } from '../understanding/entry';
 
-export type ActivityStatus = 'Observing' | 'Paused' | 'Captured' | 'Understanding updated' | 'Context copied' | 'Extraction unavailable' | 'Extraction failed';
+export type ActivityStatus = 'Observing' | 'Paused' | 'Captured' | 'Processing evidence' | 'Understanding updated' | 'No project knowledge found' | 'Context copied' | 'Extraction unavailable' | 'Extraction failed';
 
 export interface CortexRuntimeState extends CortexState {
   observing: boolean;
   activity: ActivityStatus;
   aiConfigured: boolean;
+  evidence: ProjectEvidenceSummary;
+  lastError: string | null;
 }
 
 export interface CortexPersistence {
@@ -26,6 +28,9 @@ export interface CortexPersistence {
   recordInteraction(observation: RawObservation, interaction: ReturnType<typeof normalizeObservation>, projectId: string): void;
   addManualEntry(input: ProjectEntryInput, projectId?: string): UnderstandingEntry;
   applyExtractedEntries(projectId: string, interactionId: string, candidates: UnderstandingCandidate[]): UnderstandingEntry[];
+  getEvidenceSummary(projectId?: string): ProjectEvidenceSummary;
+  getProcessableInteractions(projectId: string, limit?: number): ReturnType<typeof normalizeObservation>[];
+  markInteractionExtraction(interactionId: string, status: 'processed' | 'empty' | 'failed' | 'unavailable', error?: string | null): void;
   replaceEntry(entryId: string, input: ProjectEntryInput): UnderstandingEntry;
   deleteEntry(entryId: string): void;
   close(): void;
@@ -34,6 +39,7 @@ export interface CortexPersistence {
 export class CortexCommands {
   readonly observer: ClipboardObserver;
   private activity: ActivityStatus = 'Observing';
+  private lastError: string | null = null;
   private readonly writeClipboard: (content: string) => void;
 
   constructor(
@@ -50,7 +56,8 @@ export class CortexCommands {
       onObservation: (observation) => this.processObservation(observation),
       onError: (error) => {
         this.activity = 'Extraction failed';
-        console.error('Clipboard observation failed:', error);
+        this.lastError = safeError(error);
+        console.error('Clipboard observation failed:', this.lastError);
       },
     });
     this.writeClipboard = (content) => {
@@ -75,6 +82,8 @@ export class CortexCommands {
       observing: this.observer.isRunning(),
       activity: this.activity,
       aiConfigured: this.credentials.hasApiKey(),
+      evidence: this.store.getEvidenceSummary(),
+      lastError: this.lastError,
     };
   }
 
@@ -89,11 +98,28 @@ export class CortexCommands {
   setApiKey(apiKey: string): void {
     this.credentials.setApiKey(apiKey);
     this.activity = 'Observing';
+    this.lastError = null;
   }
 
   clearApiKey(): void {
     this.credentials.clearApiKey();
     this.activity = 'Extraction unavailable';
+    this.lastError = null;
+  }
+
+  async processPendingEvidence(limit = 20): Promise<number> {
+    if (!this.extractor.isAvailable()) {
+      this.activity = 'Extraction unavailable';
+      this.lastError = 'Configure an API key before processing captured evidence.';
+      return 0;
+    }
+    const project = this.store.getActiveProject();
+    const interactions = this.store.getProcessableInteractions(project.id, limit);
+    let updated = 0;
+    this.activity = 'Processing evidence';
+    for (const interaction of interactions) updated += await this.extractInteraction(project, interaction);
+    if (interactions.length === 0) this.activity = 'Observing';
+    return updated;
   }
 
   generateContext(): string {
@@ -115,10 +141,15 @@ export class CortexCommands {
     this.activity = 'Captured';
 
     if (!this.extractor.isAvailable()) {
+      this.store.markInteractionExtraction(interaction.id, 'unavailable');
       this.activity = 'Extraction unavailable';
       return;
     }
 
+    await this.extractInteraction(project, interaction);
+  }
+
+  private async extractInteraction(project: Project, interaction: ReturnType<typeof normalizeObservation>): Promise<number> {
     try {
       const state = this.store.getState(project.id);
       const candidates = await this.extractor.extract({
@@ -127,12 +158,24 @@ export class CortexCommands {
         activeEntries: state.entries.filter((entry) => entry.status === 'active'),
       });
       const created = this.store.applyExtractedEntries(project.id, interaction.id, candidates);
-      this.activity = created.length > 0 ? 'Understanding updated' : 'Captured';
+      this.store.markInteractionExtraction(interaction.id, created.length > 0 ? 'processed' : 'empty');
+      this.lastError = null;
+      this.activity = created.length > 0 ? 'Understanding updated' : 'No project knowledge found';
+      return created.length;
     } catch (error) {
+      const message = safeError(error);
+      this.store.markInteractionExtraction(interaction.id, 'failed', message);
       this.activity = 'Extraction failed';
-      console.error('Understanding extraction failed:', error instanceof Error ? error.message : error);
+      this.lastError = message;
+      console.error('Understanding extraction failed:', message);
+      return 0;
     }
   }
 }
 
 export type SqliteCortexStore = Pick<SqliteStore, keyof CortexPersistence>;
+
+function safeError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/sk-[A-Za-z0-9_-]{4,}/gi, '[redacted]').slice(0, 300);
+}

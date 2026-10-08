@@ -75,7 +75,14 @@ export class OpenAIUnderstandingExtractor implements UnderstandingExtractor {
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI extraction request failed (${response.status})`);
+      let detail = '';
+      try {
+        const body = await response.json() as { error?: { message?: string } };
+        detail = body.error?.message?.trim().slice(0, 240) ?? '';
+      } catch {
+        // The status still provides a safe, useful failure when the body is not JSON.
+      }
+      throw new Error(`OpenAI extraction request failed (${response.status})${detail ? `: ${detail}` : ''}`);
     }
 
     const data = await response.json() as OpenAIResponse;

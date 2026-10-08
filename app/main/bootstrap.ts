@@ -75,6 +75,7 @@ function setupIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.SET_OBSERVING, (_event, observing: boolean) => observing ? cortex?.start() : cortex?.stop());
   ipcMain.handle(IPC_CHANNELS.SET_API_KEY, (_event, apiKey: string) => cortex?.setApiKey(apiKey));
   ipcMain.handle(IPC_CHANNELS.CLEAR_API_KEY, () => cortex?.clearApiKey());
+  ipcMain.handle(IPC_CHANNELS.PROCESS_PENDING_EVIDENCE, () => cortex?.processPendingEvidence() ?? 0);
 }
 
 export function closeCortex(): void {

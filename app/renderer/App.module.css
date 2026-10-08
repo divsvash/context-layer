@@ -36,6 +36,12 @@
 .history { padding: 4px 2px; color: #979db2; font-size: 11px; }
 .empty, .help { color: #8f96ab; font-size: 11px; line-height: 1.4; }
 .error { padding: 7px 8px; border-radius: 6px; background: rgba(230,72,84,.15); color: #ff9da5; font-size: 11px; }
+.evidence { display: grid; grid-template-columns: repeat(4, 1fr) auto; gap: 6px; align-items: stretch; margin: 3px 0 9px; }
+.evidence div { display: flex; flex-direction: column; padding: 7px; border-radius: 6px; background: rgba(255,255,255,.045); text-align: center; }
+.evidence strong { font-size: 14px; }
+.evidence span { margin-top: 2px; color: #8f96ab; font-size: 9px; }
+.evidence button:disabled { cursor: default; opacity: .4; }
+.contextPreview { max-height: 210px; overflow: auto; padding: 9px; border-radius: 7px; background: rgba(0,0,0,.25); color: #d8dbea; font: 11px/1.45 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; user-select: text; }
 .dangerButton { color: #ff9da5; border-color: rgba(255,100,110,.35); }
 .footer { padding: 7px 14px; border-top: 1px solid rgba(255,255,255,.08); text-align: right; }
 .footer button { background: transparent; color: #8f96ab; }
